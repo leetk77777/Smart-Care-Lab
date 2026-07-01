@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: senior-safety-postgres
+    environment:
+      POSTGRES_DB: senior_safety
+      POSTGRES_USER: senior
+      POSTGRES_PASSWORD: seniorpass
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U senior -d senior_safety"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ai-server:
+    build: ./ai-server
+    container_name: senior-safety-ai
+    ports:
+      - "18080:8000"
+
+  backend:
+    build: ./backend
+    container_name: senior-safety-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/senior_safety
+      SPRING_DATASOURCE_USERNAME: senior
+      SPRING_DATASOURCE_PASSWORD: seniorpass
+      AI_SERVER_URL: http://ai-server:8000
+    ports:
+      - "18180:18180"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-server:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    container_name: senior-safety-frontend
+    ports:
+      - "3210:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

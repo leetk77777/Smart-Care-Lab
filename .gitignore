@@ -1,0 +1,10 @@
+node_modules/
+dist/
+target/
+.idea/
+.vscode/
+*.log
+__pycache__/
+.pytest_cache/
+.venv/
+postgres_data/
