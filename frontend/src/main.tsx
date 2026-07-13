@@ -20,13 +20,54 @@ import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAx
 import './styles.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+type RiskStatus = 'NORMAL' | 'CAUTION' | 'DANGER';
+type ScenarioKey = 'normal' | 'caution' | 'danger';
+type Senior = {
+  id: number;
+  name: string;
+  age: number;
+  address: string;
+  guardianName: string;
+  guardianPhone: string;
+};
+type SensorSummary = {
+  id: number;
+  motionDetected: boolean;
+  doorOpened: boolean;
+  temperature: number;
+  humidity: number;
+  illuminance: number;
+  eventTime: string;
+};
+type AlertSummary = {
+  id: number;
+  level: RiskStatus;
+  message: string;
+  receiver: string;
+  sent: boolean;
+  createdAt: string;
+};
+type Dashboard = {
+  senior: Senior;
+  risk: {
+    score: number;
+    status: RiskStatus;
+    reasons: string[];
+    assessedAt: string | null;
+  };
+  latestSensor: SensorSummary | null;
+  recentEvents: SensorSummary[];
+  alerts: AlertSummary[];
+  activityChart: Array<{ label: string; activity: number; temperature: number; humidity: number }>;
+};
+
 const statusMeta = {
   NORMAL: { label: '정상', className: 'normal', color: '#16a34a' },
   CAUTION: { label: '주의', className: 'caution', color: '#d97706' },
   DANGER: { label: '위험', className: 'danger', color: '#dc2626' },
 };
 
-function formatTime(value) {
+function formatTime(value?: string | null) {
   if (!value) return '-';
   return new Intl.DateTimeFormat('ko-KR', {
     month: '2-digit',
@@ -44,8 +85,8 @@ function nowLocalInput() {
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
-  const [dashboard, setDashboard] = useState(null);
-  const [seniors, setSeniors] = useState([]);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [seniors, setSeniors] = useState<Senior[]>([]);
   const [selectedSeniorId, setSelectedSeniorId] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -85,7 +126,7 @@ function App() {
     }
   };
 
-  const runDemo = async (scenario) => {
+  const runDemo = async (scenario: ScenarioKey) => {
     setNotice('');
     await fetch(`${API_BASE}/demo/${selectedSeniorId}/${scenario}`, { method: 'POST' });
     await loadDashboard(selectedSeniorId);
@@ -99,7 +140,7 @@ function App() {
     return () => clearInterval(timer);
   }, [selectedSeniorId]);
 
-  const risk = dashboard?.risk ?? { score: 0, status: 'NORMAL', reasons: [] };
+  const risk = dashboard?.risk ?? { score: 0, status: 'NORMAL' as RiskStatus, reasons: [], assessedAt: null };
   const meta = statusMeta[risk.status] ?? statusMeta.NORMAL;
   const latest = dashboard?.latestSensor;
   const chartData = useMemo(() => dashboard?.activityChart ?? [], [dashboard]);
@@ -162,7 +203,7 @@ function App() {
   );
 }
 
-function SeniorSelector({ seniors, selectedSeniorId, onChange }) {
+function SeniorSelector({ seniors, selectedSeniorId, onChange }: { seniors: Senior[]; selectedSeniorId: number; onChange: (id: number) => void }) {
   return (
     <section className="selector-bar">
       <span>모니터링 대상</span>
@@ -177,7 +218,14 @@ function SeniorSelector({ seniors, selectedSeniorId, onChange }) {
   );
 }
 
-function DashboardPage({ dashboard, risk, meta, latest, chartData, runDemo }) {
+function DashboardPage({ dashboard, risk, meta, latest, chartData, runDemo }: {
+  dashboard: Dashboard | null;
+  risk: Dashboard['risk'];
+  meta: { label: string; className: string; color: string };
+  latest: SensorSummary | null | undefined;
+  chartData: Dashboard['activityChart'];
+  runDemo: (scenario: ScenarioKey) => Promise<void>;
+}) {
   return (
     <>
       <section className={`hero ${meta.className}`}>
@@ -252,7 +300,7 @@ function DashboardPage({ dashboard, risk, meta, latest, chartData, runDemo }) {
   );
 }
 
-function SeniorPage({ seniors, onCreated }) {
+function SeniorPage({ seniors, onCreated }: { seniors: Senior[]; onCreated: () => Promise<void> }) {
   const [form, setForm] = useState({
     name: '',
     age: 78,
@@ -308,7 +356,7 @@ function SeniorPage({ seniors, onCreated }) {
   );
 }
 
-function SimulatorPage({ seniorId, onSent }) {
+function SimulatorPage({ seniorId, onSent }: { seniorId: number; onSent: () => Promise<void> }) {
   const [form, setForm] = useState({
     motionDetected: true,
     doorOpened: false,
@@ -372,7 +420,7 @@ function SimulatorPage({ seniorId, onSent }) {
   );
 }
 
-function ScenarioPage({ runDemo }) {
+function ScenarioPage({ runDemo }: { runDemo: (scenario: ScenarioKey) => Promise<void> }) {
   const items = [
     { key: 'normal', title: '1단계 정상', text: '주기적 움직임과 적정 온습도가 감지되어 정상 상태를 보여줍니다.' },
     { key: 'caution', title: '2단계 주의', text: '활동 부족과 평소와 다른 생활패턴으로 보호자 확인이 필요한 상태를 보여줍니다.' },
@@ -400,7 +448,7 @@ function ScenarioPage({ runDemo }) {
   );
 }
 
-function EventPanel({ events }) {
+function EventPanel({ events }: { events: SensorSummary[] }) {
   return (
     <div className="panel">
       <div className="panel-title">
@@ -421,7 +469,7 @@ function EventPanel({ events }) {
   );
 }
 
-function AlertPanel({ alerts }) {
+function AlertPanel({ alerts }: { alerts: AlertSummary[] }) {
   return (
     <div className="panel">
       <div className="panel-title">
@@ -445,7 +493,7 @@ function AlertPanel({ alerts }) {
   );
 }
 
-function Field({ label, type = 'text', value, onChange }) {
+function Field({ label, type = 'text', value, onChange }: { label: string; type?: string; value: string | number; onChange: (value: string) => void }) {
   return (
     <label className="field">
       <span>{label}</span>
@@ -454,7 +502,7 @@ function Field({ label, type = 'text', value, onChange }) {
   );
 }
 
-function InfoCard({ icon, label, value, sub }) {
+function InfoCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string | number; sub: string }) {
   return (
     <div className="info-card">
       <div className="icon">{icon}</div>
@@ -465,7 +513,7 @@ function InfoCard({ icon, label, value, sub }) {
   );
 }
 
-function scenarioLabel(scenario) {
+function scenarioLabel(scenario: ScenarioKey) {
   return { normal: '정상', caution: '주의', danger: '위험' }[scenario] ?? scenario;
 }
 

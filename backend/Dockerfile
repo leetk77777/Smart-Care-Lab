@@ -1,11 +1,11 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+FROM gradle:8.14.3-jdk21 AS build
 WORKDIR /app
-COPY pom.xml .
+COPY settings.gradle build.gradle ./
 COPY src ./src
-RUN mvn -q -DskipTests package
+RUN gradle bootJar --no-daemon -x test
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /app/target/senior-safety-backend-1.0.0.jar app.jar
+COPY --from=build /app/build/libs/senior-safety-backend-1.0.0.jar app.jar
 EXPOSE 18180
 ENTRYPOINT ["java", "-jar", "app.jar"]
