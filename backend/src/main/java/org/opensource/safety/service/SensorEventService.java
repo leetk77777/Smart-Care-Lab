@@ -69,8 +69,8 @@ public class SensorEventService {
             savedEvent.getTemperature(),
             savedEvent.getHumidity(),
             savedEvent.getIlluminance(),
-            savedEvent.getEventTime(),
-            lastMotionAt,
+            savedEvent.getEventTime().toString(),
+            lastMotionAt == null ? null : lastMotionAt.toString(),
             senior.getBaselineActiveStartHour(),
             senior.getBaselineActiveEndHour()
         ));

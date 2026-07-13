@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
 from pydantic import BaseModel, Field
 
 
@@ -37,7 +37,23 @@ def health() -> dict:
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
+def analyze(payload: Any = Body(...)) -> AnalyzeResponse:
+    if isinstance(payload, dict):
+        request = AnalyzeRequest(
+            seniorId=payload.get("seniorId") or payload.get("senior_id"),
+            motionDetected=payload.get("motionDetected", payload.get("motion_detected", False)),
+            doorOpened=payload.get("doorOpened", payload.get("door_opened", False)),
+            temperature=payload.get("temperature", 0),
+            humidity=payload.get("humidity", 0),
+            illuminance=payload.get("illuminance", 0),
+            eventTime=payload.get("eventTime") or payload.get("event_time"),
+            lastMotionAt=payload.get("lastMotionAt") or payload.get("last_motion_at"),
+            baselineActiveStartHour=payload.get("baselineActiveStartHour", payload.get("baseline_active_start_hour", 7)),
+            baselineActiveEndHour=payload.get("baselineActiveEndHour", payload.get("baseline_active_end_hour", 22)),
+        )
+    else:
+        request = AnalyzeRequest.model_validate(payload)
+
     score = 0
     reasons: List[str] = []
 
