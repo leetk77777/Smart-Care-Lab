@@ -21,8 +21,8 @@ public class DemoService {
                 new SensorEventRequest(seniorId, false, true, 34.0, 82.0, 20.0, now.withHour(3).withMinute(20))
             );
             case "caution" -> List.of(
-                new SensorEventRequest(seniorId, false, false, 30.5, 50.0, 260.0, now.withHour(10).withMinute(10)),
-                new SensorEventRequest(seniorId, true, false, 30.0, 48.0, 280.0, now.withHour(23).withMinute(20))
+                new SensorEventRequest(seniorId, true, false, 24.0, 45.0, 260.0, now.withHour(6).withMinute(0)),
+                new SensorEventRequest(seniorId, false, false, 30.5, 50.0, 260.0, now.withHour(10).withMinute(10))
             );
             default -> List.of(
                 new SensorEventRequest(seniorId, true, false, 24.0, 45.0, 320.0, now.minusMinutes(40)),
